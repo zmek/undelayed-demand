@@ -1,0 +1,5 @@
+streamlit
+pandas
+numpy
+plotly
+git+https://github.com/zmek/patientflow.git@offered-load-app
