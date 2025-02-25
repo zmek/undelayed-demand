@@ -29,7 +29,7 @@ RUN mkdir -p /root/.streamlit
 RUN echo '\
     [server]\n\
     port = 8501\n\
-    address = "localhost"\n\
+    address = "*"\n\
     headless = true\n\
     enableCORS = false\n\
     enableXsrfProtection = false\n\
