@@ -22,10 +22,18 @@ COPY . .
 # Expose the port Streamlit runs on
 EXPOSE 8501
 
-# Set host to 0.0.0.0 to allow external connections
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-ENV STREAMLIT_SERVER_PORT=8501
-ENV STREAMLIT_SERVER_HEADLESS=true
+# Create a directory for Streamlit configuration
+RUN mkdir -p /root/.streamlit
+
+# Create Streamlit config with server settings
+RUN echo '\
+    [server]\n\
+    port = 8501\n\
+    address = "localhost"\n\
+    headless = true\n\
+    enableCORS = false\n\
+    enableXsrfProtection = false\n\
+    ' > /root/.streamlit/config.toml
 
 # Command to run the application
 CMD ["streamlit", "run", "app.py"] 
