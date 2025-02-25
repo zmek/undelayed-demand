@@ -22,5 +22,10 @@ COPY . .
 # Expose the port Streamlit runs on
 EXPOSE 8501
 
+# Set host to 0.0.0.0 to allow external connections
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_HEADLESS=true
+
 # Command to run the application
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0"] 
+CMD ["streamlit", "run", "app.py"] 
