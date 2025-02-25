@@ -61,14 +61,51 @@ def main():
     )
 
     if uploaded_file is not None:
-        # Read the CSV file
-        df = pd.read_csv(uploaded_file, parse_dates=["arrival_datetime"])
+        try:
+            # First attempt with default parsing
+            df = pd.read_csv(uploaded_file, parse_dates=["arrival_datetime"])
+        except:
+            # If default parsing fails, try multiple common formats
+            df = pd.read_csv(uploaded_file)
+            for date_format in [
+                "%d/%m/%Y %H:%M",  # UK/European: 01/03/2024 14:30
+                "%d/%m/%Y %H:%M:%S",  # UK/European with seconds
+                "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
+                "%Y-%m-%d %H:%M",  # ISO without seconds
+                "%d-%m-%Y %H:%M",  # Dash separated UK/European
+                "%d.%m.%Y %H:%M",  # Dot separated European
+                "%d/%m/%y %H:%M",  # Two-digit year UK/European
+            ]:
+                try:
+                    df["arrival_datetime"] = pd.to_datetime(
+                        df["arrival_datetime"], format=date_format, errors="coerce"
+                    )
+                    if not df["arrival_datetime"].isna().any():
+                        break
+                except:
+                    continue
+
+        # Check if any dates failed to parse
+        if df["arrival_datetime"].isna().any():
+            st.error(
+                """Some dates could not be parsed. Supported formats include:
+            - DD/MM/YYYY HH:MM
+            - YYYY-MM-DD HH:MM:SS
+            - MM/DD/YYYY HH:MM
+            - DD-MM-YYYY HH:MM
+            Please check your date format and try again."""
+            )
+            return
+
         df.set_index("arrival_datetime", inplace=True)
 
         # More robust date handling
-        start_date = df.index.to_series().dt.date.min()
-        end_date = df.index.to_series().dt.date.max()
-        num_days = len(df.index.to_series().dt.date.unique())
+        df.index = pd.to_datetime(
+            df.index, dayfirst=True
+        )  # Ensure we have a DatetimeIndex
+        start_date = df.index.min()
+        end_date = df.index.max()
+        num_days = len(df.index.normalize().unique())
 
         st.write(
             f"""The uploaded dataset starts on {start_date} and ends on {end_date}, 
