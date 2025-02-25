@@ -4,6 +4,12 @@ FROM python:3.12-slim
 # Set the working directory in the container
 WORKDIR /app
 
+# Install git and other build dependencies
+RUN apt-get update && \
+    apt-get install -y git build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy the requirements first to leverage Docker cache
 COPY requirements.txt .
 
