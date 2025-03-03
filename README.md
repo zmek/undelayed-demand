@@ -1,5 +1,19 @@
-# undelayed-demand
-A streamlit app for visualising patterns of emergency demand by hour of day
+# undelayed-demand: A streamlit app for visualising patterns of emergency demand by hour of day. 
+
+Welcome to the undelayed-demand repository, which is designed to support hospital bed management through predictive modelling. I'm Zella King, a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. Since 2020, I have worked with University College London Hospital (UCLH) NHS Trust on practical tools to improve patient flow through the hospital.
+
+## What is this repository for? 
+
+One reason why Emergency Departments (EDs) fail to meet admissions targets is because beds are not available at the time patients need to be admitted. UCLH wanted to understand their "undelayed" demand over the course of a day - that is, when beds would be needed if patients were processed within the 4-hour target time for ED. 
+
+I created an application for an improvement project for UCLH, which was focused on their emergency patient pathway. The app show operations managers when they need to have bed ready for incoming patients.
+
+The app itself is available on Streamlit Community [here](https://undelayed-demand-2jlyfpul5sawfbxd9tgz5n.streamlit.app/). You can upload a file of arrival datetimes of patients later admitted to your ED, and specify your ED targets. The app will generate a series of charts showing your patterns of demand. 
+
+Follow the instructions below to set up a locally hosted version of the same Streamlit app. 
+
+
+
 
 # Local Setup Instructions
 
