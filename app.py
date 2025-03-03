@@ -108,7 +108,7 @@ def main():
         num_days = len(df.index.normalize().unique())
 
         st.write(
-            f"""The uploaded dataset starts on {start_date} and ends on {end_date}, 
+            f"""The uploaded dataset starts on {start_date.strftime("%-d %B %Y")} and ends on {end_date.strftime("%-d %B %Y")}, 
                  and contains {len(df):,} inpatient arrivals over {num_days} days. 
                  The chart below shows the average number of patients arriving each hour of the day who are later admitted."""
         )
@@ -283,7 +283,7 @@ def main():
                     plot_cumulative_arrival_rates,
                     "consistency_plot",
                     df,
-                    f"Cumulative number of beds needed on weekends, by hour of day if ED targets are to be met on {percentage_of_days*100:.0f}% of days",
+                    f"Cumulative number of beds needed, by hour of day if ED targets are to be met on {percentage_of_days*100:.0f}% of days",
                     curve_params=(x1, y1, x2, y2),
                     start_plot_index=start_hour,
                     num_days=num_days,
