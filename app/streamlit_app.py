@@ -28,6 +28,61 @@ def generate_and_store_plot(plot_function, plot_key, *args, **kwargs):
         return None
 
 
+def load_arrival_data(file_path):
+    """
+    Load arrival datetime data from a CSV file.
+
+    Parameters:
+    -----------
+    file_path : str or Path
+        Path to the CSV file containing arrival data
+
+    Returns:
+    --------
+    pd.DataFrame
+        DataFrame with arrival_datetime as index
+    """
+    try:
+        # First attempt with default parsing
+        df = pd.read_csv(file_path, parse_dates=["arrival_datetime"])
+    except:
+        # If default parsing fails, try multiple common formats
+        df = pd.read_csv(file_path)
+        for date_format in [
+            "%d/%m/%Y %H:%M",  # UK/European: 01/03/2024 14:30
+            "%d/%m/%Y %H:%M:%S",  # UK/European with seconds
+            "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
+            "%Y-%m-%d %H:%M",  # ISO without seconds
+            "%d-%m-%Y %H:%M",  # Dash separated UK/European
+            "%d.%m.%Y %H:%M",  # Dot separated European
+            "%d/%m/%y %H:%M",  # Two-digit year UK/European
+        ]:
+            try:
+                df["arrival_datetime"] = pd.to_datetime(
+                    df["arrival_datetime"], format=date_format, errors="coerce"
+                )
+                if not df["arrival_datetime"].isna().any():
+                    break
+            except:
+                continue
+
+    # Check if any dates failed to parse
+    if df["arrival_datetime"].isna().any():
+        raise ValueError(
+            """Some dates could not be parsed. Supported formats include:
+        - DD/MM/YYYY HH:MM
+        - YYYY-MM-DD HH:MM:SS
+        - MM/DD/YYYY HH:MM
+        - DD-MM-YYYY HH:MM
+        Please check your date format and try again."""
+        )
+
+    df.set_index("arrival_datetime", inplace=True)
+    df.index = pd.to_datetime(df.index, dayfirst=True)  # Ensure we have a DatetimeIndex
+
+    return df
+
+
 def main():
     st.title("Understand your emergency demand")
     st.header("Find out *when* beds need to be ready, to meet ED targets.")
@@ -62,53 +117,18 @@ def main():
 
     if uploaded_file is not None:
         try:
-            # First attempt with default parsing
-            df = pd.read_csv(uploaded_file, parse_dates=["arrival_datetime"])
-        except:
-            # If default parsing fails, try multiple common formats
-            df = pd.read_csv(uploaded_file)
-            for date_format in [
-                "%d/%m/%Y %H:%M",  # UK/European: 01/03/2024 14:30
-                "%d/%m/%Y %H:%M:%S",  # UK/European with seconds
-                "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
-                "%Y-%m-%d %H:%M",  # ISO without seconds
-                "%d-%m-%Y %H:%M",  # Dash separated UK/European
-                "%d.%m.%Y %H:%M",  # Dot separated European
-                "%d/%m/%y %H:%M",  # Two-digit year UK/European
-            ]:
-                try:
-                    df["arrival_datetime"] = pd.to_datetime(
-                        df["arrival_datetime"], format=date_format, errors="coerce"
-                    )
-                    if not df["arrival_datetime"].isna().any():
-                        break
-                except:
-                    continue
-
-        # Check if any dates failed to parse
-        if df["arrival_datetime"].isna().any():
-            st.error(
-                """Some dates could not be parsed. Supported formats include:
-            - DD/MM/YYYY HH:MM
-            - YYYY-MM-DD HH:MM:SS
-            - MM/DD/YYYY HH:MM
-            - DD-MM-YYYY HH:MM
-            Please check your date format and try again."""
-            )
+            df = load_arrival_data(uploaded_file)
+        except ValueError as e:
+            st.error(str(e))
             return
 
-        df.set_index("arrival_datetime", inplace=True)
-
         # More robust date handling
-        df.index = pd.to_datetime(
-            df.index, dayfirst=True
-        )  # Ensure we have a DatetimeIndex
         start_date = df.index.min()
         end_date = df.index.max()
         num_days = len(df.index.normalize().unique())
 
         st.write(
-            f"""The uploaded dataset starts on {start_date} and ends on {end_date}, 
+            f"""The uploaded dataset starts on {start_date.strftime("%-d %B %Y")} and ends on {end_date.strftime("%-d %B %Y")}, 
                  and contains {len(df):,} inpatient arrivals over {num_days} days. 
                  The chart below shows the average number of patients arriving each hour of the day who are later admitted."""
         )
@@ -283,7 +303,7 @@ def main():
                     plot_cumulative_arrival_rates,
                     "consistency_plot",
                     df,
-                    f"Cumulative number of beds needed on weekends, by hour of day if ED targets are to be met on {percentage_of_days*100:.0f}% of days",
+                    f"Cumulative number of beds needed, by hour of day if ED targets are to be met on {percentage_of_days*100:.0f}% of days",
                     curve_params=(x1, y1, x2, y2),
                     start_plot_index=start_hour,
                     num_days=num_days,

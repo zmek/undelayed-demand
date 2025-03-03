@@ -10,17 +10,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements first to leverage Docker cache
-COPY requirements.txt .
+# Copy the source code and setup file
+COPY setup.py ./
+COPY src/ ./src/
+COPY app/ ./app/
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application
-COPY . .
-
-# Expose the port Streamlit runs on
-EXPOSE 8501
+# Install the package
+RUN pip install -e .
 
 # Create a directory for Streamlit configuration
 RUN mkdir -p /root/.streamlit
@@ -35,5 +31,8 @@ RUN echo '\
     enableXsrfProtection = false\n\
     ' > /root/.streamlit/config.toml
 
+# Expose the port Streamlit runs on
+EXPOSE 8501
+
 # Command to run the application
-CMD ["streamlit", "run", "app.py"] 
+CMD ["streamlit", "run", "app/streamlit_app.py"] 

@@ -1,0 +1,23 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64.0.0", "wheel"]
+
+[project]
+dependencies = [
+  "pandas",
+  "numpy",
+  "matplotlib",
+  "streamlit",
+  "ipython",
+  "jupyter",
+  "ipykernel",
+  "patientflow @ git+https://github.com/zmek/patientflow.git",
+]
+description = "A package for visualising patterns of emergency demand"
+name = "undelayed-demand"
+requires-python = ">=3.10"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+where = ["."]
