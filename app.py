@@ -32,6 +32,27 @@ def main():
     st.title("Understand your emergency demand")
     st.header("Find out *when* beds need to be ready, to meet ED targets.")
 
+    # Add creator information
+    st.markdown(
+        """
+    <style>
+    .creator-info {
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        padding: 10px;
+        background-color: #f0f2f6;
+        font-size: 0.8em;
+        border-top-left-radius: 5px;
+    }
+    </style>
+    <div class='creator-info'>
+    Created by Dr Zella King | Clinical Operational Research Unit, UCL | zella.king@ucl.ac.uk
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     # Introduction text
     st.markdown(
         """
@@ -159,6 +180,8 @@ def main():
             st.sidebar.number_input(
                 "Consistency target: Percentage of days on which you want to hit those targets",
                 value=90,
+                min_value=1,
+                max_value=100,
             )
             / 100
         )
