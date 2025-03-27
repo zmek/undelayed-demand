@@ -1,0 +1,23 @@
+name: undelayed-demand
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - matplotlib>=3.1.3
+  - numpy>=1.18.1
+  - pandas>=1.0.1
+  - pyyaml=6.0.2
+  - requests
+  - scipy>=1.4.1
+  - seaborn>=0.10.0
+  - sympy>=1.12
+  - tabulate=0.9.0
+  - xgboost>=2.0.3
+  - joblib>=1.4.2
+  - scikit-learn=1.4.0
+  - streamlit
+  - pip
+  - pip:
+    - shap>=0.42.1
+    - git+https://github.com/UCL-CORU/patientflow.git
