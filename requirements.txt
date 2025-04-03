@@ -2,4 +2,8 @@ streamlit
 pandas
 numpy
 matplotlib
+jupyter
+notebook
+ipykernel
+jupyterlab
 git+https://github.com/UCL-CORU/patientflow.git

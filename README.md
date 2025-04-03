@@ -14,12 +14,7 @@ Follow the instructions below to set up a locally hosted version of the same Str
 
 
 
-
-# Local Setup Instructions
-
-## Prerequisites
-- Python 3.10 or higher
-- Git
+# Undelayed-Demand Setup Instructions
 
 ## Setup Options
 
@@ -33,22 +28,17 @@ Follow the instructions below to set up a locally hosted version of the same Str
    cd undelayed-demand
    ```
 
-3. **Create and activate a virtual environment**
+3. **Create and activate the conda environment**
    ```bash
-   conda create -n streamlit-app python=3.10
-   conda activate streamlit-app
-   ```
-
-4. **Install required packages**
-   ```bash
-   pip install -r requirements.txt
+   conda env create -f environment.yml
+   conda activate undelayed-demand
    ```
 
 ### Option 2: Using Python venv
 1. **Clone the repository**
    ```bash
-   git clone [repository-url]
-   cd [repository-name]
+   git clone https://github.com/zmek/undelayed-demand.git
+   cd undelayed-demand
    ```
 
 2. **Create and activate a virtual environment**
@@ -56,7 +46,7 @@ Follow the instructions below to set up a locally hosted version of the same Str
    # On Windows
    python -m venv venv
    .\venv\Scripts\activate
-
+   
    # On macOS/Linux
    python3 -m venv venv
    source venv/bin/activate
@@ -67,21 +57,77 @@ Follow the instructions below to set up a locally hosted version of the same Str
    pip install -r requirements.txt
    ```
 
-## Running the App
+## Running the Streamlit App
 
 After completing either setup option above:
+
 ```bash
 streamlit run app.py
 ```
 
 The app should automatically open in your default web browser at http://localhost:8501. If it doesn't, you can manually open this URL.
 
+## Running the Jupyter Notebooks
+
+### For Conda Setup (Option 1)
+
+1. **Register your environment as a Jupyter kernel** (only needed first time)
+   ```bash
+   python -m ipykernel install --user --name=undelayed-demand --display-name="Python (undelayed-demand)"
+   ```
+
+2. **Launch Jupyter Notebook or JupyterLab**
+   ```bash
+   # For Jupyter Notebook
+   jupyter notebook
+   
+   # For JupyterLab
+   jupyter lab
+   ```
+
+3. **Navigate to the notebooks directory and open the notebook**
+   ```
+   notebooks/Visualise_un-delayed_demand.ipynb
+   ```
+
+4. **Select the kernel**
+   - In the Jupyter interface, make sure to select the "Python (undelayed-demand)" kernel from the kernel dropdown menu
+
+### For Python venv Setup (Option 2)
+
+1. **Register your environment as a Jupyter kernel** (only needed first time)
+   ```bash
+   python -m ipykernel install --user --name=venv --display-name="Python (venv)"
+   ```
+
+2. **Launch Jupyter Notebook or JupyterLab**
+   ```bash
+   # For Jupyter Notebook
+   jupyter notebook
+   
+   # For JupyterLab
+   jupyter lab
+   ```
+
+3. **Navigate to the notebooks directory and open the notebook**
+   ```
+   notebooks/Visualise_un-delayed_demand.ipynb
+   ```
+
+4. **Select the kernel**
+   - In the Jupyter interface, make sure to select the "Python (venv)" kernel from the kernel dropdown menu
+
+## Data Requirements
+
+The notebook expects:
+- A data directory structure with a `data-raw` folder
+- A file named `ed_sdec_ct_5.csv` in this directory, or update the code accordingly
+- The CSV file should contain Emergency Department arrival data with an `arrival_datetime` column
+
+You may need to create this directory structure and place your data file accordingly to run the notebook successfully.
+
 ## Troubleshooting
 
-- If you see import errors, ensure all dependencies are installed correctly
-- For Conda users: If you see "(base)" and "(streamlit-app)" both showing in your terminal:
-  ```bash
-  conda deactivate  # Run this first to deactivate base
-  conda activate streamlit-app  # Then reactivate your environment
-  ```
-- For Python venv users: Make sure you see "(venv)" at your command prompt, indicating the virtual environment is active
+- If you encounter errors with the patientflow package, check out its GitHub repository for specific installation instructions: https://github.com/UCL-CORU/patientflow.git
+- Make sure you have Git installed for the package installation from GitHub
+- If you face issues with data paths, check the path settings in the notebook where `set_file_paths` is called
