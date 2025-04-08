@@ -15,6 +15,12 @@ if "step4_completed" not in st.session_state:
     st.session_state.step4_completed = False
 if "plots" not in st.session_state:
     st.session_state.plots = {}
+if "original_df" not in st.session_state:
+    st.session_state.original_df = None
+if "original_df_with_index" not in st.session_state:
+    st.session_state.original_df_with_index = None
+if "filtered_df" not in st.session_state:
+    st.session_state.filtered_df = None
 
 
 def generate_and_store_plot(plot_function, plot_key, *args, **kwargs):
@@ -26,6 +32,76 @@ def generate_and_store_plot(plot_function, plot_key, *args, **kwargs):
     except Exception as e:
         st.error(f"Error generating plot: {str(e)}")
         return None
+
+
+def apply_data_filtering(df, df_with_index):
+    """
+    Apply filtering to the dataframe based on user selections.
+    Displays all column names and treats the selected column as categorical.
+
+    Parameters:
+    df (pandas.DataFrame): Original dataframe with arrival_datetime as a column
+    df_with_index (pandas.DataFrame): Dataframe with arrival_datetime as index
+
+    Returns:
+    tuple: (filtered_df, filtered_df_with_index) - Both the column and index versions of the filtered dataframe
+    """
+    # Display filtering options
+    st.subheader("Step 1b: Filter your data (optional)")
+
+    # Get all columns except arrival_datetime for filtering
+    filter_columns = [col for col in df.columns if col != "arrival_datetime"]
+
+    if not filter_columns:
+        # If no columns, return the original data
+        return df, df_with_index
+
+    # Display all column names in a dropdown
+    filter_col = st.selectbox(
+        "Select column to filter on:", filter_columns, key="filter_column_selectbox"
+    )
+
+    if not filter_col:
+        # If no filter column selected, return the original data
+        return df, df_with_index
+
+    # Treat all columns as categorical
+    # Extract unique values from the selected column
+    unique_values = df[filter_col].dropna().unique()
+
+    # Display the unique values in a multi-select dropdown
+    selected_values = st.multiselect(
+        f"Select values for {filter_col}:",
+        options=unique_values,
+        default=unique_values,
+        key=f"multiselect_{filter_col}",
+    )
+
+    # Apply the filter based on selected values
+    if selected_values:
+        filtered_df = df[df[filter_col].isin(selected_values)]
+    else:
+        filtered_df = df  # No filter if nothing is selected
+
+    # Update both versions in session state
+    st.session_state.original_df = filtered_df
+
+    # Show the filter effect
+    st.write(
+        f"Filtered data contains {len(filtered_df):,} records (from original {len(df):,})"
+    )
+
+    # Set the filtered data with proper datetime index for visualization
+    filtered_df_with_index = filtered_df.copy()
+
+    # Only set index if arrival_datetime is not already the index
+    if "arrival_datetime" in filtered_df.columns:
+        filtered_df_with_index.set_index("arrival_datetime", inplace=True)
+
+    # Update the indexed version in session state too
+    st.session_state.original_df_with_index = filtered_df_with_index
+
+    return filtered_df, filtered_df_with_index
 
 
 def main():
@@ -61,17 +137,17 @@ def main():
     """
     )
 
-    st.subheader("Step 1: Uploading your data")
+    st.subheader("Step 1: Upload your data")
 
     # File upload
     st.markdown(
         """Upload a CSV file containing Emergency Department arrival data. Be sure to only include arrival times for patients who are later admitted.<br><br>
     Requirements:<br>
     - The file must be in CSV format<br>
-    - It must include a column named 'arrival_datetime'<br>
-    - That column should contain valid dates and times<br><br>
-    Example format for arrival_datetime column: 03/01/2024 05:12:49<br>
-    Note: Most standard date/time formats will be accepted.""",
+    - It must include a column containing patient arrival dates and times<br>
+    - The date/time column should contain valid dates and times<br><br>
+    Example format for date/time values: 03/01/2024 05:12:49<br>
+    Note: Most standard date/time formats will be accepted. After uploading, you'll be able to select which column contains the arrival datetimes.""",
         unsafe_allow_html=True,
     )
 
@@ -83,31 +159,56 @@ def main():
 
     if uploaded_file is not None:
         try:
-            # First attempt with default parsing
-            df = pd.read_csv(uploaded_file, parse_dates=["arrival_datetime"])
-        except:
-            # If default parsing fails, try multiple common formats
+            # First read the CSV file without parsing dates
             df = pd.read_csv(uploaded_file)
-            for date_format in [
-                "%d/%m/%Y %H:%M",  # UK/European: 01/03/2024 14:30
-                "%d/%m/%Y %H:%M:%S",  # UK/European with seconds
-                "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
-                "%Y-%m-%d %H:%M",  # ISO without seconds
-                "%d-%m-%Y %H:%M",  # Dash separated UK/European
-                "%d.%m.%Y %H:%M",  # Dot separated European
-                "%d/%m/%y %H:%M",  # Two-digit year UK/European
-            ]:
-                try:
-                    df["arrival_datetime"] = pd.to_datetime(
-                        df["arrival_datetime"], format=date_format, errors="coerce"
-                    )
-                    if not df["arrival_datetime"].isna().any():
-                        break
-                except:
-                    continue
+
+            # Allow user to specify which column contains arrival datetimes
+            st.subheader("Step 1a: Identify arrival datetime column")
+            datetime_col_options = df.columns.tolist()
+            datetime_col = st.selectbox(
+                "Select the column that contains arrival datetimes:",
+                datetime_col_options,
+                index=(
+                    datetime_col_options.index("arrival_datetime")
+                    if "arrival_datetime" in datetime_col_options
+                    else 0
+                ),
+                key="datetime_column_selector",
+            )
+
+            # Rename the selected column to arrival_datetime if it's not already named that
+            if datetime_col != "arrival_datetime":
+                df = df.rename(columns={datetime_col: "arrival_datetime"})
+
+            # Now try to parse the arrival_datetime column
+            try:
+                df["arrival_datetime"] = pd.to_datetime(df["arrival_datetime"])
+            except:
+                # If default parsing fails, try multiple common formats
+                for date_format in [
+                    "%d/%m/%Y %H:%M",  # UK/European: 01/03/2024 14:30
+                    "%d/%m/%Y %H:%M:%S",  # UK/European with seconds
+                    "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
+                    "%Y-%m-%d %H:%M",  # ISO without seconds
+                    "%d-%m-%Y %H:%M",  # Dash separated UK/European
+                    "%d.%m.%Y %H:%M",  # Dot separated European
+                    "%d/%m/%y %H:%M",  # Two-digit year UK/European
+                ]:
+                    try:
+                        df["arrival_datetime"] = pd.to_datetime(
+                            df["arrival_datetime"], format=date_format, errors="coerce"
+                        )
+                        if not df["arrival_datetime"].isna().any():
+                            break
+                    except:
+                        continue
+
+        except Exception as e:
+            st.error(f"Error reading CSV file: {str(e)}")
+            return
 
         # Check if any dates failed to parse
-        if df["arrival_datetime"].isna().any():
+        if "arrival_datetime" not in df.columns or df["arrival_datetime"].isna().any():
             st.error(
                 """Some dates could not be parsed. Supported formats include:
             - DD/MM/YYYY HH:MM
@@ -118,7 +219,21 @@ def main():
             )
             return
 
-        df.set_index("arrival_datetime", inplace=True)
+        # Set arrival_datetime as index before filtering
+        df_with_index = df.copy()
+        df_with_index.set_index("arrival_datetime", inplace=True)
+
+        # Store original dataframe in session state if it's the first load
+        # We store both versions - with and without index
+        if "original_df" not in st.session_state:
+            st.session_state.original_df = df.copy()
+            st.session_state.original_df_with_index = df_with_index.copy()
+
+        # Apply filtering using the dedicated function
+        filtered_df, df = apply_data_filtering(df, df_with_index)
+
+        # Now df contains the filtered dataframe with arrival_datetime as index
+        # This maintains consistency with the variable naming in the rest of the script
 
         # More robust date handling
         df.index = pd.to_datetime(
@@ -272,8 +387,20 @@ def main():
                 num_days=num_days,
                 return_figure=True,
             )
-            if cumulative_plot:
-                st.pyplot(cumulative_plot)
+
+            # # Get the last 5 points from the plot
+            # if cumulative_plot:
+            #     ax = cumulative_plot.gca()
+            #     lines = ax.get_lines()
+            #     if lines:
+            #         line = lines[0]  # Get the first line
+            #         x_data = line.get_xdata()
+            #         y_data = line.get_ydata()
+            #         last_5_points = list(zip(x_data[-5:], y_data[-5:]))
+            #         st.write("Last 5 points (x, y):")
+            #         st.write(last_5_points)
+            # if cumulative_plot:
+            #     st.pyplot(cumulative_plot)
 
             # Step 4: Consistency targets
             st.subheader(
@@ -318,6 +445,27 @@ def main():
                     markers=["o"],
                     line_styles_centiles=["-.", "--", ":", "-", "-"],
                 )
+
+                # # Get the last 5 points from both lines in the plot
+                # if consistency_plot:
+                #     ax = consistency_plot.gca()
+                #     lines = ax.get_lines()
+                #     if len(lines) >= 2:
+                #         # Get points from both lines
+                #         line1 = lines[0]
+                #         line2 = lines[1]
+                #         x_data1 = line1.get_xdata()
+                #         y_data1 = line1.get_ydata()
+                #         x_data2 = line2.get_xdata()
+                #         y_data2 = line2.get_ydata()
+
+                #         last_5_points_line1 = list(zip(x_data1[-5:], y_data1[-5:]))
+                #         last_5_points_line2 = list(zip(x_data2[-5:], y_data2[-5:]))
+
+                #         st.write("Last 5 points for first line (x, y):")
+                #         st.write(last_5_points_line1)
+                #         st.write("Last 5 points for second line (x, y):")
+                #         st.write(last_5_points_line2)
                 if consistency_plot:
                     st.pyplot(consistency_plot)
 
