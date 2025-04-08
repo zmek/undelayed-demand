@@ -15,6 +15,12 @@ if "step4_completed" not in st.session_state:
     st.session_state.step4_completed = False
 if "plots" not in st.session_state:
     st.session_state.plots = {}
+if "original_df" not in st.session_state:
+    st.session_state.original_df = None
+if "original_df_with_index" not in st.session_state:
+    st.session_state.original_df_with_index = None
+if "filtered_df" not in st.session_state:
+    st.session_state.filtered_df = None
 
 
 def generate_and_store_plot(plot_function, plot_key, *args, **kwargs):
@@ -26,6 +32,107 @@ def generate_and_store_plot(plot_function, plot_key, *args, **kwargs):
     except Exception as e:
         st.error(f"Error generating plot: {str(e)}")
         return None
+
+
+def apply_data_filtering(df, df_with_index):
+    """
+    Apply filtering to the dataframe based on user selections.
+
+    Parameters:
+    df (pandas.DataFrame): Original dataframe with arrival_datetime as a column
+    df_with_index (pandas.DataFrame): Dataframe with arrival_datetime as index
+
+    Returns:
+    tuple: (filtered_df, filtered_df_with_index) - Both the column and index versions of the filtered dataframe
+    """
+    # Display filtering options
+    st.subheader("Step 1b: Filter your data (optional)")
+
+    # Get all columns except arrival_datetime for filtering
+    filter_columns = [col for col in df.columns if col != "arrival_datetime"]
+
+    if not filter_columns:
+        # If no filterable columns, return the original data
+        return df, df_with_index
+
+    # Only show filtering options if there are columns to filter on
+    filter_col = st.selectbox(
+        "Select column to filter on:", filter_columns, key="filter_column_selectbox"
+    )
+
+    if not filter_col:
+        # If no filter column selected, return the original data
+        return df, df_with_index
+
+    # Determine the column data type to provide appropriate filtering options
+    col_dtype = df[filter_col].dtype
+
+    if pd.api.types.is_numeric_dtype(col_dtype):
+        # For numeric columns, provide min and max filters
+        min_val = float(df[filter_col].min())
+        max_val = float(df[filter_col].max())
+
+        filter_min, filter_max = st.slider(
+            f"Filter range for {filter_col}:",
+            min_val,
+            max_val,
+            (min_val, max_val),
+            key=f"slider_{filter_col}",
+        )
+
+        # Apply the filter
+        filtered_df = df[
+            (df[filter_col] >= filter_min) & (df[filter_col] <= filter_max)
+        ]
+
+    elif pd.api.types.is_categorical_dtype(col_dtype) or pd.api.types.is_object_dtype(
+        col_dtype
+    ):
+        # For categorical/text columns, provide a multi-select
+        unique_values = df[filter_col].dropna().unique()
+        selected_values = st.multiselect(
+            f"Select values for {filter_col}:",
+            options=unique_values,
+            default=unique_values,
+            key=f"multiselect_{filter_col}",
+        )
+
+        if selected_values:
+            filtered_df = df[df[filter_col].isin(selected_values)]
+        else:
+            filtered_df = df  # No filter if nothing is selected
+
+    else:
+        # For other types, provide a text input for simple contains filtering
+        filter_text = st.text_input(
+            f"Filter {filter_col} (contains):", key=f"text_filter_{filter_col}"
+        )
+
+        if filter_text:
+            filtered_df = df[
+                df[filter_col]
+                .astype(str)
+                .str.contains(filter_text, case=False, na=False)
+            ]
+        else:
+            filtered_df = df  # No filter if no text entered
+
+    # Update both versions in session state
+    st.session_state.original_df = filtered_df
+
+    # Show the filter effect
+    st.write(
+        f"Filtered data contains {len(filtered_df):,} records (from original {len(df):,})"
+    )
+
+    # Set the filtered data with proper datetime index for visualization
+    filtered_df_with_index = filtered_df.copy()
+    filtered_df_with_index.set_index("arrival_datetime", inplace=True)
+
+    # Update the indexed version in session state too
+    st.session_state.original_df_with_index = filtered_df_with_index
+
+    return filtered_df, filtered_df_with_index
 
 
 def main():
@@ -61,7 +168,7 @@ def main():
     """
     )
 
-    st.subheader("Step 1: Uploading your data")
+    st.subheader("Step 1a: Uploading your data")
 
     # File upload
     st.markdown(
@@ -94,7 +201,7 @@ def main():
                 "%m/%d/%Y %H:%M",  # US: 03/01/2024 14:30
                 "%Y-%m-%d %H:%M",  # ISO without seconds
                 "%d-%m-%Y %H:%M",  # Dash separated UK/European
-                "%d.%m.%Y %H:%M",  # Dot separated European
+                "%d.%m.Y %H:%M",  # Dot separated European
                 "%d/%m/%y %H:%M",  # Two-digit year UK/European
             ]:
                 try:
@@ -107,7 +214,7 @@ def main():
                     continue
 
         # Check if any dates failed to parse
-        if df["arrival_datetime"].isna().any():
+        if "arrival_datetime" not in df.columns or df["arrival_datetime"].isna().any():
             st.error(
                 """Some dates could not be parsed. Supported formats include:
             - DD/MM/YYYY HH:MM
@@ -118,7 +225,21 @@ def main():
             )
             return
 
-        df.set_index("arrival_datetime", inplace=True)
+        # Set arrival_datetime as index before filtering
+        df_with_index = df.copy()
+        df_with_index.set_index("arrival_datetime", inplace=True)
+
+        # Store original dataframe in session state if it's the first load
+        # We store both versions - with and without index
+        if "original_df" not in st.session_state:
+            st.session_state.original_df = df.copy()
+            st.session_state.original_df_with_index = df_with_index.copy()
+
+        # Apply filtering using the dedicated function
+        filtered_df, df = apply_data_filtering(df, df_with_index)
+
+        # Now df contains the filtered dataframe with arrival_datetime as index
+        # This maintains consistency with the variable naming in the rest of the script
 
         # More robust date handling
         df.index = pd.to_datetime(
