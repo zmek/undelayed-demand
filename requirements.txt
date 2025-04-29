@@ -6,4 +6,4 @@ jupyter
 notebook
 ipykernel
 jupyterlab
-patientflow
+scipy

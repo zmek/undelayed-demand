@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-from patientflow.viz.arrival_rates import (
+from src.viz.arrival_rates import (
     plot_arrival_rates,
     plot_cumulative_arrival_rates,
 )
-from patientflow.viz.aspirational_curve_plot import plot_curve
+from src.viz.aspirational_curve_plot import plot_curve
 
 # Set up session states for step completion and plot storage
 if "step2_completed" not in st.session_state:
