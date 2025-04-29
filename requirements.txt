@@ -6,4 +6,4 @@ jupyter
 notebook
 ipykernel
 jupyterlab
-git+https://github.com/UCL-CORU/patientflow.git
+patientflow
