@@ -236,9 +236,13 @@ def main():
         # This maintains consistency with the variable naming in the rest of the script
 
         # More robust date handling
-        df.index = pd.to_datetime(
-            df.index, dayfirst=True
-        )  # Ensure we have a DatetimeIndex
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(
+                df.index, dayfirst=True, utc=True
+            )  # Ensure we have a DatetimeIndex
+        elif df.index.tz is not None:
+            # If index is timezone-aware, convert to UTC
+            df.index = df.index.tz_convert("UTC")
         start_date = df.index.min()
         end_date = df.index.max()
         num_days = len(df.index.normalize().unique())
